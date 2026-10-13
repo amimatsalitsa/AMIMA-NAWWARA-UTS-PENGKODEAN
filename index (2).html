@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modul Voucher Kas Keluar - Streamlit Simulation</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Alpine.js for React-like reactivity in single HTML file -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen p-4 sm:p-8" x-data="voucherApp()">
+
+    <div class="max-w-5xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        
+        <!-- Header Section -->
+        <div class="bg-slate-900 text-white p-6 sm:p-8">
+            <div class="flex items-center space-x-3">
+                <span class="text-3xl">💸</span>
+                <div>
+                    <h1 class="text-2xl font-bold tracking-tight">Modul Entri Transaksi Kas Keluar</h1>
+                    <p class="text-slate-400 text-sm mt-1">Formulir pencatatan jurnal pengeluaran kas dengan validasi keseimbangan debit dan kredit secara <em class="text-amber-300">real-time</em>.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Form Body -->
+        <div class="p-6 sm:p-8 space-y-6">
+
+            <!-- Meta Data Row -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">No. Voucher</label>
+                    <input type="text" x-model="voucherNo" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Tanggal Transaksi</label>
+                    <input type="date" x-model="txDate" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Dibayarkan Kepada / Penerima</label>
+                    <input type="text" x-model="payee" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                </div>
+            </div>
+
+            <!-- Memo Field -->
+            <div>
+                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Keterangan / Memo Transaksi</label>
+                <textarea x-model="description" rows="2" class="w-full bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"></textarea>
+            </div>
+
+            <hr class="border-slate-200">
+
+            <!-- Journal Entries Table / Rows Section -->
+            <div>
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900">📋 Rincian Jurnal Transaksi (Baris Entri)</h3>
+                        <p class="text-xs text-slate-500">Tambahkan baris akun debit dan kredit sesuai dokumen transaksi kas keluar.</p>
+                    </div>
+                    <button @click="addRow()" class="mt-3 sm:mt-0 inline-flex items-center justify-center bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-4 py-2 rounded-lg shadow-sm transition">
+                        ➕ Tambah Baris
+                    </button>
+                </div>
+
+                <!-- Rows List -->
+                <div class="space-y-3">
+                    <template x-for="(row, index) in rows" :key="index">
+                        <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center bg-slate-50 p-3 rounded-xl border border-slate-200">
+                            <!-- Akun Selection -->
+                            <div class="sm:col-span-5">
+                                <label class="block sm:hidden text-[10px] font-bold text-slate-500 uppercase">Akun #<span x-text="index+1"></span></label>
+                                <select x-model="row.account" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                                    <template x-for="acc in accountList">
+                                        <option :value="acc" x-text="acc"></option>
+                                    </template>
+                                </select>
+                            </div>
+                            <!-- Debit Input -->
+                            <div class="sm:col-span-3">
+                                <label class="block sm:hidden text-[10px] font-bold text-slate-500 uppercase">Debit (Rp)</label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-xs text-slate-400">Rp</span>
+                                    <input type="number" step="1000" x-model.number="row.debit" class="w-full bg-white border border-slate-300 rounded-lg pl-9 pr-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                                </div>
+                            </div>
+                            <!-- Credit Input -->
+                            <div class="sm:col-span-3">
+                                <label class="block sm:hidden text-[10px] font-bold text-slate-500 uppercase">Kredit (Rp)</label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-xs text-slate-400">Rp</span>
+                                    <input type="number" step="1000" x-model.number="row.credit" class="w-full bg-white border border-slate-300 rounded-lg pl-9 pr-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                                </div>
+                            </div>
+                            <!-- Delete Button -->
+                            <div class="sm:col-span-1 flex justify-end sm:justify-center">
+                                <button @click="removeRow(index)" class="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition" title="Hapus Baris">
+                                    🗑️
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <hr class="border-slate-200">
+
+            <!-- Live Balanced Indicator -->
+            <div>
+                <h3 class="text-lg font-bold text-slate-900 mb-3">📊 Kalkulator Indikator Real-Time (Live Balanced Indicator)</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Total Debit Card -->
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-center">
+                        <div class="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Debit (Rp)</div>
+                        <div class="text-xl font-bold text-slate-900 mt-1" x-text="formatIDR(totalDebit)"></div>
+                    </div>
+                    <!-- Total Credit Card -->
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-center">
+                        <div class="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Kredit (Rp)</div>
+                        <div class="text-xl font-bold text-slate-900 mt-1" x-text="formatIDR(totalCredit)"></div>
+                    </div>
+                    <!-- Difference Card -->
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-center">
+                        <div class="text-xs font-semibold uppercase tracking-wider text-slate-500">Selisih (Debit - Kredit)</div>
+                        <div class="text-xl font-bold mt-1" :class="isBalanced ? 'text-emerald-600' : 'text-rose-600'" x-text="formatIDR(difference)"></div>
+                    </div>
+                </div>
+
+                <!-- Status Alert Box -->
+                <div class="mt-4">
+                    <template x-if="totalDebit === 0 && totalCredit === 0">
+                        <div class="p-4 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl text-sm flex items-center space-x-2">
+                            <span>⚠️</span>
+                            <span>Total nilai transaksi masih 0. Masukkan nominal debit dan kredit.</span>
+                        </div>
+                    </template>
+                    <template x-if="(totalDebit > 0 || totalCredit > 0) && !isBalanced">
+                        <div class="p-4 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-sm flex items-center space-x-2">
+                            <span>❌</span>
+                            <span x-html="'Transaksi <strong>TIDAK SEIMBANG</strong>! Selisih sebesar ' + formatIDR(Math.abs(difference)) + '. Total Debit harus sama dengan Total Kredit.'"></span>
+                        </div>
+                    </template>
+                    <template x-if="isBalanced">
+                        <div class="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-sm flex items-center space-x-2">
+                            <span>✅</span>
+                            <span>Transaksi SEIMBANG dan siap disimpan!</span>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <hr class="border-slate-200">
+
+            <!-- Submit Button Section -->
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <button @click="submitVoucher()" :disabled="!isBalanced" 
+                    :class="isBalanced ? 'bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer shadow-md' : 'bg-slate-200 text-slate-400 cursor-not-allowed'"
+                    class="w-full sm:w-auto px-6 py-3 rounded-xl font-semibold text-sm transition flex items-center justify-center space-x-2">
+                    <span>💾</span>
+                    <span>Simpan Voucher Kas Keluar</span>
+                </button>
+                <div class="text-xs text-slate-400 text-center sm:text-right">
+                    Tombol simpan otomatis terkunci jika jurnal tidak seimbang atau bernilai nol.
+                </div>
+            </div>
+
+            <!-- Success / JSON Output Modal or Expander Simulation -->
+            <template x-if="successSubmitted">
+                <div class="bg-emerald-50 border border-emerald-300 rounded-xl p-5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2 text-emerald-800 font-semibold text-sm">
+                            <span>✅</span>
+                            <span>Sukses! Voucher Kas Keluar berhasil disimpan ke basis data dan jurnal umum telah diperbarui.</span>
+                        </div>
+                        <button @click="successSubmitted = false" class="text-emerald-700 hover:text-emerald-900 text-sm font-bold">✕ Tutup</button>
+                    </div>
+                    <div>
+                        <div class="text-xs font-bold text-emerald-900 uppercase mb-1">Ringkasan Data yang Disimpan (JSON):</div>
+                        <pre class="bg-slate-900 text-emerald-300 p-3 rounded-lg text-xs overflow-x-auto" x-text="savedJsonOutput"></pre>
+                    </div>
+                </div>
+            </template>
+
+        </div>
+    </div>
+
+    <!-- Alpine.js Application Logic -->
+    <script>
+        function voucherApp() {
+            return {
+                voucherNo: 'BKK-2026-10-001',
+                txDate: '2026-10-12',
+                payee: 'PT Solusi Prima Mandiri',
+                description: 'Pembayaran biaya operasional kantor cabang bulanan.',
+                successSubmitted: false,
+                savedJsonOutput: '',
+                accountList: [
+                    "1-1100 - Kas Besar",
+                    "1-1110 - Kas Kecil",
+                    "1-1200 - Bank BCA",
+                    "2-1100 - Hutang Usaha",
+                    "5-1100 - Beban Gaji",
+                    "5-1200 - Beban Operasional Lainnya",
+                    "5-1300 - Beban Sewa Kantor"
+                ],
+                rows: [
+                    { account: "1-1100 - Kas Besar", debit: 0, credit: 500000 },
+                    { account: "5-1200 - Beban Operasional Lainnya", debit: 500000, credit: 0 }
+                ],
+                addRow() {
+                    this.rows.push({ account: this.accountList[0], debit: 0, credit: 0 });
+                },
+                removeRow(index) {
+                    if (this.rows.length > 1) {
+                        this.rows.splice(index, 1);
+                    } else {
+                        alert("Minimal harus ada 1 baris entri jurnal.");
+                    }
+                },
+                get totalDebit() {
+                    return this.rows.reduce((sum, row) => sum + (Number(row.debit) || 0), 0);
+                },
+                get totalCredit() {
+                    return this.rows.reduce((sum, row) => sum + (Number(row.credit) || 0), 0);
+                },
+                get difference() {
+                    return this.totalDebit - this.totalCredit;
+                },
+                get isBalanced() {
+                    return (this.totalDebit === this.totalCredit) && (this.totalDebit > 0);
+                },
+                formatIDR(val) {
+                    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 2 }).format(val);
+                },
+                submitVoucher() {
+                    if (!this.isBalanced) return;
+                    const payload = {
+                        voucher_no: this.voucherNo,
+                        date: this.txDate,
+                        payee: this.payee,
+                        description: this.description,
+                        total_amount: this.totalDebit,
+                        items: this.rows
+                    };
+                    this.savedJsonOutput = JSON.stringify(payload, null, 2);
+                    this.successSubmitted = true;
+                }
+            }
+        }
+    </script>
+</body>
+</html>
